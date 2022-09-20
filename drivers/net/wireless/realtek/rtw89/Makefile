@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 
+CONFIG_RTW89_USB := m
+CONFIG_RTW89_8852AU := m
+
 obj-$(CONFIG_RTW89_CORE) += rtw89_core.o
 rtw89_core-y += core.o \
 		mac80211.o \
@@ -23,6 +26,9 @@ rtw89_8852a-objs := rtw8852a.o \
 obj-$(CONFIG_RTW89_8852AE) += rtw89_8852ae.o
 rtw89_8852ae-objs := rtw8852ae.o
 
+obj-$(CONFIG_RTW89_8852AU) += rtw89_8852au.o
+rtw89_8852au-objs := rtw8852au.o
+
 obj-$(CONFIG_RTW89_8852C) += rtw89_8852c.o
 rtw89_8852c-objs := rtw8852c.o \
 		    rtw8852c_table.o \
@@ -37,3 +43,5 @@ rtw89_core-$(CONFIG_RTW89_DEBUG) += debug.o
 obj-$(CONFIG_RTW89_PCI) += rtw89_pci.o
 rtw89_pci-y := pci.o
 
+obj-$(CONFIG_RTW89_USB) += rtw89_usb.o
+rtw89_usb-y := usb.o

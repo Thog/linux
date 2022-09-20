@@ -14,6 +14,7 @@
 
 struct rtw89_dev;
 struct rtw89_pci_info;
+struct rtw89_usb_info;
 
 extern const struct ieee80211_ops rtw89_ops;
 
@@ -2450,6 +2451,7 @@ struct rtw89_chip_info {
 
 union rtw89_bus_info {
 	const struct rtw89_pci_info *pci;
+	const struct rtw89_usb_info *usb;
 };
 
 struct rtw89_driver_info {
@@ -3081,6 +3083,7 @@ struct rtw89_dev {
 	struct rtw89_hw_scan_info scan_info;
 	const struct rtw89_chip_info *chip;
 	const struct rtw89_pci_info *pci_info;
+	const struct rtw89_usb_info *usb_info;
 	struct rtw89_hal hal;
 	struct rtw89_mac_info mac;
 	struct rtw89_fw_info fw;
