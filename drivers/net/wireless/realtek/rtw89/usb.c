@@ -94,6 +94,8 @@ u8 rtw89_usb_ops_read8(struct rtw89_dev *rtwdev, u32 addr)
 
 	BUG_ON(ret != 0);
 
+	rtw89_info(rtwdev, "rtw89_usb_ops_read8, addr=%x, data=%x\n", addr, data);
+
 	return data;
 }
 
@@ -105,6 +107,8 @@ u16 rtw89_usb_ops_read16(struct rtw89_dev *rtwdev, u32 addr)
 
 	BUG_ON(ret != 0);
 
+	rtw89_info(rtwdev, "rtw89_usb_ops_read16, addr=%x, data=%x\n", addr, data);
+
 	return le16_to_cpu(data);
 }
 
@@ -115,6 +119,8 @@ u32 rtw89_usb_ops_read32(struct rtw89_dev *rtwdev, u32 addr)
 	int ret = rtw89_usb_read_sync(rtwdev, addr, &data, 4);
 
 	BUG_ON(ret != 0);
+
+	rtw89_info(rtwdev, "rtw89_usb_ops_read32, addr=%x, data=%x\n", addr, data);
 
 	return le32_to_cpu(data);
 }
@@ -235,6 +241,42 @@ static const struct rtw89_hci_ops rtw89_usb_ops = {
 	.recovery_complete = rtw89_usb_ops_recovery_complete,
 };
 
+static int rtw89_usb_populate_status(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
+	int status_reg;
+	int value;
+
+	if (chip_id == RTL8852A || chip_id == RTL8852B)
+		status_reg = R_AX_USB_STATUS;
+	else if (chip_id == RTL8852C)
+		status_reg = R_AX_USB_STATUS_V1;
+	else
+	{
+		rtw89_err(rtwdev, "rtw89_usb_populate_status: Unsupported chip_id %d", chip_id);
+		return -EINVAL;
+	}
+
+	value = rtwdev->hci.ops->read32(rtwdev, status_reg);
+
+	// Yes the register name state USB2, it's actually to signal USB3.
+	if ((value & B_AX_R_USB2_SEL) == B_AX_R_USB2_SEL)
+	{
+		rtwusb->transport_speed = USB_SPEED_SUPER;
+	}
+	else if ((value & B_AX_MODE_HS) == B_AX_MODE_HS)
+	{
+		rtwusb->transport_speed = USB_SPEED_HIGH;
+	}
+	else
+	{
+		rtwusb->transport_speed = USB_SPEED_FULL;
+	}
+
+	return 0;
+}
+
 static int rtw89_usb_parse(struct rtw89_dev *rtwdev, struct usb_interface *interface)
 {
 	/*struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
@@ -260,6 +302,13 @@ static int rtw89_usb_interface_init(struct rtw89_dev *rtwdev, struct usb_interfa
 
 	rtwusb->udev = udev;
 	rtwusb->rtwdev = rtwdev;
+	ret = rtw89_usb_populate_status(rtwdev);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to populate USB transport informations, ret=%d\n",
+			ret);
+		return ret;
+	}
+
 	ret = rtw89_usb_parse(rtwdev, interface);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to check USB configuration, ret=%d\n",
@@ -304,10 +353,8 @@ int rtw89_usb_probe(struct usb_interface *interface, const struct usb_device_id 
 	rtwdev->dev = &interface->dev;
 	rtwdev->chip = info->chip;
 	rtwdev->usb_info = info->bus.usb;
-	// TODO
 	rtwdev->hci.ops = &rtw89_usb_ops;
 	rtwdev->hci.type = RTW89_HCI_TYPE_USB;
-	// TODO: change fw via type.
 
 	SET_IEEE80211_DEV(rtwdev->hw, &interface->dev);
 

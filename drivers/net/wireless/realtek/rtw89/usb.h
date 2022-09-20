@@ -13,6 +13,12 @@
 	.idProduct = (prod), \
 	.driver_info = (kernel_ulong_t)&(cfg)
 
+#define R_AX_USB_STATUS	0x11F0
+#define R_AX_USB_STATUS_V1	0x51F0
+#define B_AX_R_SSIC_EN	BIT(2)
+#define B_AX_R_USB2_SEL	BIT(1)
+#define B_AX_MODE_HS	BIT(0)
+
 struct rtw89_usb_info {
 
 };
@@ -21,6 +27,7 @@ struct rtw89_usb {
 	struct rtw89_dev *rtwdev;
 	struct usb_device *udev;
 	u32 max_bulk_out_size;
+	enum usb_device_speed transport_speed;
 };
 
 int rtw89_usb_probe(struct usb_interface *interface, const struct usb_device_id *id);

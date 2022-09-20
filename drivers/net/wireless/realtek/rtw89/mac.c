@@ -941,9 +941,24 @@ static int rtw89_mac_pwr_seq(struct rtw89_dev *rtwdev,
 {
 	int ret;
 
+	int pwr_intf_msk;
+
+	switch (rtwdev->hci.type) {
+		case RTW89_HCI_TYPE_PCIE:
+			pwr_intf_msk = PWR_INTF_MSK_PCIE;
+			break;
+		case RTW89_HCI_TYPE_USB:
+			// Mary-nyan(TODO): The other driver have some USB2 and USB3 switch here, check the diff of power sequence.
+			pwr_intf_msk = PWR_INTF_MSK_USB;
+			break;
+		default:
+			rtw89_err(rtwdev, "rtw89_mac_pwr_seq: Unsupported HCI type %d", rtwdev->hci.type);
+			return -EINVAL;
+	}
+
 	for (; *cfg_seq; cfg_seq++) {
 		ret = rtw89_mac_sub_pwr_seq(rtwdev, BIT(rtwdev->hal.cv),
-					    PWR_INTF_MSK_PCIE, *cfg_seq);
+					    pwr_intf_msk, *cfg_seq);
 		if (ret)
 			return -EBUSY;
 	}
@@ -1092,6 +1107,8 @@ static int rtw89_mac_power_switch(struct rtw89_dev *rtwdev, bool on)
 		cfg_seq = chip->pwr_off_seq;
 		cfg_func = chip->ops->pwr_off_func;
 	}
+
+	// Mary-nyan(FIXME): difference here, missing _patch_aon_int_leave_lps but could be a hack because power saving wasn't handled on the other driver.
 
 	if (test_bit(RTW89_FLAG_FW_RDY, rtwdev->flags))
 		__rtw89_leave_ps_mode(rtwdev);
