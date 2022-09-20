@@ -127,17 +127,35 @@ int rtw89_usb_ops_mac_pre_init(struct rtw89_dev *rtwdev)
 
 void rtw89_usb_ops_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
 {
-	BUG();
+	int ret = rtw89_usb_write_sync(rtwdev, addr, &data, 1);
+
+	if (ret) {
+		rtw89_err(rtwdev, "rtw89_usb_ops_write8, addr=%x, ret=%d\n", addr, ret);
+	}
+
+	BUG_ON(ret != 0);
 }
 
 void rtw89_usb_ops_write16(struct rtw89_dev *rtwdev, u32 addr, u16 data)
 {
-	BUG();
+	int ret = rtw89_usb_write_sync(rtwdev, addr, &data, 2);
+
+	if (ret) {
+		rtw89_err(rtwdev, "rtw89_usb_ops_write16, addr=%x, ret=%d\n", addr, ret);
+	}
+
+	BUG_ON(ret != 0);
 }
 
 void rtw89_usb_ops_write32(struct rtw89_dev *rtwdev, u32 addr, u32 data)
 {
-	BUG();
+	int ret = rtw89_usb_write_sync(rtwdev, addr, &data, 4);
+
+	if (ret) {
+		rtw89_err(rtwdev, "rtw89_usb_ops_write32, addr=%x, ret=%d\n", addr, ret);
+	}
+
+	BUG_ON(ret != 0);
 }
 
 int rtw89_usb_ops_mac_post_init(struct rtw89_dev *rtwdev)
@@ -378,7 +396,6 @@ int rtw89_usb_pm_resume(struct usb_interface *interface)
 	// TODO
 	return 0;
 }
-
 EXPORT_SYMBOL(rtw89_usb_pm_resume);
 
 MODULE_AUTHOR("Mary-nyan	<mary@mary.zone>");
