@@ -11,60 +11,57 @@
 #define REALTEK_USB_VENQT_CMD_REQ		0x05
 #define RTW89_USB_CONTROL_MSG_TIMEOUT	500/* ms */
 
-#define IS_HIGH_SPEED_USB(udev) \
-		((USB_SPEED_HIGH == (udev)->speed) ? true : false)
-
-int rtw89_usb_ops_tx_write(struct rtw89_dev *rtwdev, struct rtw89_core_tx_request *tx_req)
+static int rtw89_usb_ops_tx_write(struct rtw89_dev *rtwdev, struct rtw89_core_tx_request *tx_req)
 {
 	BUG();
 
 	return 0;
 }
 
-void rtw89_usb_ops_tx_kick_off(struct rtw89_dev *rtwdev, u8 txch)
+static void rtw89_usb_ops_tx_kick_off(struct rtw89_dev *rtwdev, u8 txch)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_tx_kick_off: not implemented\n");
 }
 
-void rtw89_usb_ops_flush_queues(struct rtw89_dev *rtwdev, u32 queues, bool drop)
+static void rtw89_usb_ops_flush_queues(struct rtw89_dev *rtwdev, u32 queues, bool drop)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_flush_queues: not implemented\n");
 }
 
-void rtw89_usb_ops_reset(struct rtw89_dev *rtwdev)
+static void rtw89_usb_ops_reset(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_reset: not implemented\n");
 }
 
-int rtw89_usb_ops_start(struct rtw89_dev *rtwdev)
+static int rtw89_usb_ops_start(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_start: not implemented\n");
 	return -ENOTSUPP;
 }
 
-void rtw89_usb_ops_stop(struct rtw89_dev *rtwdev)
+static void rtw89_usb_ops_stop(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_stop: not implemented\n");
 }
 
-void rtw89_usb_ops_pause(struct rtw89_dev *rtwdev, bool pause)
+static void rtw89_usb_ops_pause(struct rtw89_dev *rtwdev, bool pause)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_pause: not implemented\n");
 }
 
-void rtw89_usb_ops_switch_mode(struct rtw89_dev *rtwdev, bool low_power)
+static void rtw89_usb_ops_switch_mode(struct rtw89_dev *rtwdev, bool low_power)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_switch_mode: not implemented\n");
 }
 
-void rtw89_usb_recalc_int_mit(struct rtw89_dev *rtwdev)
+static void rtw89_usb_recalc_int_mit(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_recalc_int_mit: not implemented\n");
@@ -96,7 +93,7 @@ static int rtw89_usb_read_sync(struct rtw89_dev *rtwdev, u32 addr, void *data, u
 	return usb_control_msg_recv(udev, 0, request, requesttype, value, index, data, len, RTW89_USB_CONTROL_MSG_TIMEOUT, GFP_ATOMIC);
 }
 
-void rtw89_usb_ops_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
+static void rtw89_usb_ops_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
 {
 	int ret = rtw89_usb_write_sync(rtwdev, addr, &data, 1);
 
@@ -109,7 +106,7 @@ void rtw89_usb_ops_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
 	BUG_ON(ret != 0);
 }
 
-void rtw89_usb_ops_write16(struct rtw89_dev *rtwdev, u32 addr, u16 data)
+static void rtw89_usb_ops_write16(struct rtw89_dev *rtwdev, u32 addr, u16 data)
 {
 	u16 val = cpu_to_le16(data);
 	int ret = rtw89_usb_write_sync(rtwdev, addr, &val, 2);
@@ -123,7 +120,7 @@ void rtw89_usb_ops_write16(struct rtw89_dev *rtwdev, u32 addr, u16 data)
 	BUG_ON(ret != 0);
 }
 
-void rtw89_usb_ops_write32(struct rtw89_dev *rtwdev, u32 addr, u32 data)
+static void rtw89_usb_ops_write32(struct rtw89_dev *rtwdev, u32 addr, u32 data)
 {
 	u32 val = cpu_to_le32(data);
 	int ret = rtw89_usb_write_sync(rtwdev, addr, &val, 4);
@@ -188,7 +185,7 @@ static u8 rtw89_usb_ops_read8(struct rtw89_dev *rtwdev, u32 addr)
 	return data;
 }
 
-u16 rtw89_usb_ops_read16(struct rtw89_dev *rtwdev, u32 addr)
+static u16 rtw89_usb_ops_read16(struct rtw89_dev *rtwdev, u32 addr)
 {
 	u16 data;
 	int ret;
@@ -212,7 +209,7 @@ u16 rtw89_usb_ops_read16(struct rtw89_dev *rtwdev, u32 addr)
 	return le16_to_cpu(data);
 }
 
-u32 rtw89_usb_ops_read32(struct rtw89_dev *rtwdev, u32 addr)
+static u32 rtw89_usb_ops_read32(struct rtw89_dev *rtwdev, u32 addr)
 {
 	u32 data;
 	int ret;
@@ -268,7 +265,7 @@ static int rtw89_usb_ctrl_flush_en(struct rtw89_dev *rtwdev, u8 en)
 	return 0;
 }
 
-int rtw89_usb_ops_mac_pre_init(struct rtw89_dev *rtwdev)
+static int rtw89_usb_ops_mac_pre_init(struct rtw89_dev *rtwdev)
 {
 	int ret;
 
@@ -288,14 +285,14 @@ int rtw89_usb_ops_mac_pre_init(struct rtw89_dev *rtwdev)
 	return 0;
 }
 
-int rtw89_usb_ops_mac_post_init(struct rtw89_dev *rtwdev)
+static int rtw89_usb_ops_mac_post_init(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_mac_post_init: not implemented\n");
 	return -ENOTSUPP;
 }
 
-int rtw89_usb_ops_deinit(struct rtw89_dev *rtwdev)
+static int rtw89_usb_ops_deinit(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_deinit: not implemented\n");
@@ -303,7 +300,7 @@ int rtw89_usb_ops_deinit(struct rtw89_dev *rtwdev)
 }
 
 
-u32 rtw89_usb_check_and_reclaim_tx_resource(struct rtw89_dev *rtwdev, u8 txch)
+static u32 rtw89_usb_check_and_reclaim_tx_resource(struct rtw89_dev *rtwdev, u8 txch)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_check_and_reclaim_tx_resource: not implemented\n");
@@ -311,32 +308,32 @@ u32 rtw89_usb_check_and_reclaim_tx_resource(struct rtw89_dev *rtwdev, u8 txch)
 	return 0;
 }
 
-int rtw89_usb_ops_mac_lv1_recovery(struct rtw89_dev *rtwdev, enum rtw89_lv1_rcvy_step step)
+static int rtw89_usb_ops_mac_lv1_recovery(struct rtw89_dev *rtwdev, enum rtw89_lv1_rcvy_step step)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_mac_lv1_recovery: not implemented\n");
 	return -ENOTSUPP;
 }
 
-void rtw89_usb_ops_dump_err_status(struct rtw89_dev *rtwdev)
+static void rtw89_usb_ops_dump_err_status(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_dump_err_status: not implemented\n");
 }
 
-int rtw89_usb_napi_poll(struct napi_struct *napi, int budget)
+static int rtw89_usb_napi_poll(struct napi_struct *napi, int budget)
 {
 	// TODO
 	return -ENOTSUPP;
 }
 
-void rtw89_usb_ops_recovery_start(struct rtw89_dev *rtwdev)
+static void rtw89_usb_ops_recovery_start(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_recovery_start: not implemented\n");
 }
 
-void rtw89_usb_ops_recovery_complete(struct rtw89_dev *rtwdev)
+static void rtw89_usb_ops_recovery_complete(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_recovery_complete: not implemented\n");
@@ -456,6 +453,11 @@ static int rtw89_usb_interface_init(struct rtw89_dev *rtwdev, struct usb_interfa
 static void rtw89_usb_interface_deinit(struct rtw89_dev *rtwdev, struct usb_interface *interface)
 {
 	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+
+	if (rtwusb->udev->state != USB_STATE_NOTATTACHED)
+	{
+		usb_reset_device(rtwusb->udev);
+	}
 
 	usb_put_dev(rtwusb->udev);
 	usb_set_intfdata(interface, NULL);
