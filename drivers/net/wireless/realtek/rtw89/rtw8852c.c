@@ -2939,8 +2939,12 @@ const struct rtw89_chip_info rtw8852c_chip_info = {
 	.max_amsdu_limit	= 8000,
 	.dis_2g_40m_ul_ofdma	= false,
 	.rsvd_ple_ofst		= 0x6f800,
-	.hfc_param_ini		= rtw8852c_hfc_param_ini_pcie,
-	.dle_mem		= rtw8852c_dle_mem_pcie,
+	.hfc_param_ini_pcie	= rtw8852c_hfc_param_ini_pcie,
+        // TODO(Mary-nyan): Support 8852CU
+	.hfc_param_ini_usb	= NULL,
+	.dle_mem_pcie		= rtw8852c_dle_mem_pcie,
+        // TODO(Mary-nyan): Support 8852CU
+	.dle_mem_usb		= NULL,
 	.rf_base_addr		= {0xe000, 0xf000},
 	.pwr_on_seq		= NULL,
 	.pwr_off_seq		= NULL,

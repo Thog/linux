@@ -685,21 +685,27 @@ enum mac_ax_err_info {
 
 struct rtw89_mac_size_set {
 	const struct rtw89_hfc_prec_cfg hfc_preccfg_pcie;
+	const struct rtw89_hfc_prec_cfg hfc_preccfg_usb;
 	const struct rtw89_dle_size wde_size0;
+	const struct rtw89_dle_size wde_size1;
 	const struct rtw89_dle_size wde_size4;
 	const struct rtw89_dle_size wde_size18;
 	const struct rtw89_dle_size wde_size19;
 	const struct rtw89_dle_size ple_size0;
+	const struct rtw89_dle_size ple_size1;
 	const struct rtw89_dle_size ple_size4;
 	const struct rtw89_dle_size ple_size18;
 	const struct rtw89_dle_size ple_size19;
 	const struct rtw89_wde_quota wde_qt0;
+	const struct rtw89_wde_quota wde_qt1;
 	const struct rtw89_wde_quota wde_qt4;
 	const struct rtw89_wde_quota wde_qt17;
 	const struct rtw89_wde_quota wde_qt18;
 	const struct rtw89_ple_quota ple_qt4;
 	const struct rtw89_ple_quota ple_qt5;
 	const struct rtw89_ple_quota ple_qt13;
+	const struct rtw89_ple_quota ple_qt25;
+	const struct rtw89_ple_quota ple_qt26;
 	const struct rtw89_ple_quota ple_qt44;
 	const struct rtw89_ple_quota ple_qt45;
 	const struct rtw89_ple_quota ple_qt46;

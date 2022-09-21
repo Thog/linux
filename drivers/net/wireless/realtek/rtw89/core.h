@@ -2365,8 +2365,10 @@ struct rtw89_chip_info {
 	u16 max_amsdu_limit;
 	bool dis_2g_40m_ul_ofdma;
 	u32 rsvd_ple_ofst;
-	const struct rtw89_hfc_param_ini *hfc_param_ini;
-	const struct rtw89_dle_mem *dle_mem;
+	const struct rtw89_hfc_param_ini *hfc_param_ini_pcie;
+	const struct rtw89_hfc_param_ini *hfc_param_ini_usb;
+	const struct rtw89_dle_mem *dle_mem_pcie;
+	const struct rtw89_dle_mem *dle_mem_usb;
 	u32 rf_base_addr[2];
 	u8 support_bands;
 	bool support_bw160;

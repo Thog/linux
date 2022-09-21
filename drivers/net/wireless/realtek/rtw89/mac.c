@@ -538,10 +538,15 @@ static int hfc_reset_param(struct rtw89_dev *rtwdev)
 
 	switch (rtwdev->hci.type) {
 	case RTW89_HCI_TYPE_PCIE:
-		param_ini = rtwdev->chip->hfc_param_ini[qta_mode];
+		param_ini = rtwdev->chip->hfc_param_ini_pcie[qta_mode];
+		param->en = 0;
+		break;
+	case RTW89_HCI_TYPE_USB:
+		param_ini = rtwdev->chip->hfc_param_ini_usb[qta_mode];
 		param->en = 0;
 		break;
 	default:
+		rtw89_err(rtwdev, "hfc_reset_param: Unsupported HCI type %d", rtwdev->hci.type);
 		return -EINVAL;
 	}
 
@@ -1251,9 +1256,13 @@ static int rtw89_mac_sys_init(struct rtw89_dev *rtwdev)
 }
 
 const struct rtw89_mac_size_set rtw89_mac_size = {
+	// TODO(Mary-nyan): Confirm what is going on here, the out of tree driver doesn't have matching values here...
 	.hfc_preccfg_pcie = {2, 40, 0, 0, 1, 0, 0, 0},
+	.hfc_preccfg_usb = {2, 40, 0, 0, 1, 0, 0, 0},
 	/* PCIE 64 */
 	.wde_size0 = {RTW89_WDE_PG_64, 4095, 1,},
+	/* SDIO, PCIE STF, USB */
+	.wde_size1 = {RTW89_WDE_PG_64, 768, 0,},
 	/* DLFW */
 	.wde_size4 = {RTW89_WDE_PG_64, 0, 4096,},
 	/* 8852C DLFW */
@@ -1262,6 +1271,8 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.wde_size19 = {RTW89_WDE_PG_64, 3328, 0,},
 	/* PCIE */
 	.ple_size0 = {RTW89_PLE_PG_128, 1520, 16,},
+	/* SDIO, USB */
+	.ple_size1 = {RTW89_PLE_PG_128, 3184, 16,},
 	/* DLFW */
 	.ple_size4 = {RTW89_PLE_PG_128, 64, 1472,},
 	/* 8852C DLFW */
@@ -1270,6 +1281,8 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.ple_size19 = {RTW89_PLE_PG_128, 1904, 16,},
 	/* PCIE 64 */
 	.wde_qt0 = {3792, 196, 0, 107,},
+	/* SDIO, PCIE STF, USB */
+	.wde_qt1 = {512, 196, 0, 60,},
 	/* DLFW */
 	.wde_qt4 = {0, 0, 0, 0,},
 	/* 8852C DLFW */
@@ -1282,6 +1295,10 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 	.ple_qt5 = {264, 0, 32, 20, 64, 13, 1101, 0, 64, 128, 120,},
 	/* DLFW */
 	.ple_qt13 = {0, 0, 16, 48, 0, 0, 0, 0, 0, 0, 0,},
+	/* USB SCC */
+	.ple_qt25 = {1536, 0, 16, 48, 13, 13, 360, 0, 32, 40, 8, 0,},
+	/* USB SCC */
+	.ple_qt26 = {2654, 0, 1134, 48, 64, 13, 1478, 0, 64, 128, 120, 0,},
 	/* DLFW 52C */
 	.ple_qt44 = {0, 0, 16, 256, 0, 0, 0, 0, 0, 0, 0, 0,},
 	/* DLFW 52C */
@@ -1293,15 +1310,30 @@ const struct rtw89_mac_size_set rtw89_mac_size = {
 };
 EXPORT_SYMBOL(rtw89_mac_size);
 
+static const struct rtw89_dle_mem *get_dle_mem(struct rtw89_dev *rtwdev)
+{
+	switch (rtwdev->hci.type){
+	case RTW89_HCI_TYPE_PCIE:
+		return rtwdev->chip->dle_mem_pcie;
+	case RTW89_HCI_TYPE_USB:
+		return rtwdev->chip->dle_mem_usb;
+	default:
+		rtw89_err(rtwdev, "get_dle_mem_cfg: Unsupported HCI type %d", rtwdev->hci.type);
+		return NULL;
+	}
+}
+
 static const struct rtw89_dle_mem *get_dle_mem_cfg(struct rtw89_dev *rtwdev,
 						   enum rtw89_qta_mode mode)
 {
 	struct rtw89_mac_info *mac = &rtwdev->mac;
+	const struct rtw89_dle_mem *dle_mem = get_dle_mem(rtwdev);
 	const struct rtw89_dle_mem *cfg;
 
-	cfg = &rtwdev->chip->dle_mem[mode];
-	if (!cfg)
+	if (!dle_mem)
 		return NULL;
+
+	cfg = &dle_mem[mode];
 
 	if (cfg->mode != mode) {
 		rtw89_warn(rtwdev, "qta mode unmatch!\n");
@@ -3805,9 +3837,12 @@ bool rtw89_mac_get_txpwr_cr(struct rtw89_dev *rtwdev,
 			    enum rtw89_phy_idx phy_idx,
 			    u32 reg_base, u32 *cr)
 {
-	const struct rtw89_dle_mem *dle_mem = rtwdev->chip->dle_mem;
-	enum rtw89_qta_mode mode = dle_mem->mode;
+	const struct rtw89_dle_mem *dle_mem = get_dle_mem(rtwdev);
+	enum rtw89_qta_mode mode;
 	u32 addr = rtw89_mac_reg_by_idx(reg_base, phy_idx);
+
+	BUG_ON(dle_mem == NULL);
+	mode = dle_mem->mode;
 
 	if (addr < R_AX_PWR_RATE_CTRL || addr > CMAC1_END_ADDR) {
 		rtw89_err(rtwdev, "[TXPWR] addr=0x%x exceed txpwr cr\n",

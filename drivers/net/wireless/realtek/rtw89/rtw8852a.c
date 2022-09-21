@@ -43,11 +43,57 @@ static const struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_pcie[] = {
 	[RTW89_QTA_INVALID] = {NULL},
 };
 
+// FIXME(Mary-nyan): For now we mirror PCIe values, confirm values are correct.
+static const struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_usb[] = {
+	{128, 1896, grp_0}, /* ACH 0 */
+	{128, 1896, grp_0}, /* ACH 1 */
+	{128, 1896, grp_0}, /* ACH 2 */
+	{128, 1896, grp_0}, /* ACH 3 */
+	{128, 1896, grp_1}, /* ACH 4 */
+	{128, 1896, grp_1}, /* ACH 5 */
+	{128, 1896, grp_1}, /* ACH 6 */
+	{128, 1896, grp_1}, /* ACH 7 */
+	{32, 1896, grp_0}, /* B0MGQ */
+	{128, 1896, grp_0}, /* B0HIQ */
+	{32, 1896, grp_1}, /* B1MGQ */
+	{128, 1896, grp_1}, /* B1HIQ */
+	{40, 0, 0} /* FWCMDQ */
+};
+
+// FIXME(Mary-nyan): For now we mirror PCIe values, confirm values are correct.
+static const struct rtw89_hfc_pub_cfg rtw8852a_hfc_pubcfg_usb = {
+	1896, /* Group 0 */
+	1896, /* Group 1 */
+	3792, /* Public Max */
+	0 /* WP threshold */
+};
+
+static const struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_usb[] = {
+	[RTW89_QTA_SCC] = {rtw8852a_hfc_chcfg_usb, &rtw8852a_hfc_pubcfg_usb,
+			   &rtw89_mac_size.hfc_preccfg_usb, RTW89_HCIFC_STF},
+	[RTW89_QTA_DLFW] = {NULL, NULL, &rtw89_mac_size.hfc_preccfg_usb,
+			    RTW89_HCIFC_STF},
+	[RTW89_QTA_INVALID] = {NULL},
+};
+
 static const struct rtw89_dle_mem rtw8852a_dle_mem_pcie[] = {
 	[RTW89_QTA_SCC] = {RTW89_QTA_SCC, &rtw89_mac_size.wde_size0,
 			   &rtw89_mac_size.ple_size0, &rtw89_mac_size.wde_qt0,
 			   &rtw89_mac_size.wde_qt0, &rtw89_mac_size.ple_qt4,
 			   &rtw89_mac_size.ple_qt5},
+	[RTW89_QTA_DLFW] = {RTW89_QTA_DLFW, &rtw89_mac_size.wde_size4,
+			    &rtw89_mac_size.ple_size4, &rtw89_mac_size.wde_qt4,
+			    &rtw89_mac_size.wde_qt4, &rtw89_mac_size.ple_qt13,
+			    &rtw89_mac_size.ple_qt13},
+	[RTW89_QTA_INVALID] = {RTW89_QTA_INVALID, NULL, NULL, NULL, NULL, NULL,
+			       NULL},
+};
+
+static const struct rtw89_dle_mem rtw8852a_dle_mem_usb[] = {
+	[RTW89_QTA_SCC] = {RTW89_QTA_SCC, &rtw89_mac_size.wde_size1,
+			   &rtw89_mac_size.ple_size1, &rtw89_mac_size.wde_qt1,
+			   &rtw89_mac_size.wde_qt1, &rtw89_mac_size.ple_qt25,
+			   &rtw89_mac_size.ple_qt26},
 	[RTW89_QTA_DLFW] = {RTW89_QTA_DLFW, &rtw89_mac_size.wde_size4,
 			    &rtw89_mac_size.ple_size4, &rtw89_mac_size.wde_qt4,
 			    &rtw89_mac_size.wde_qt4, &rtw89_mac_size.ple_qt13,
@@ -2096,8 +2142,10 @@ const struct rtw89_chip_info rtw8852a_chip_info = {
 	.max_amsdu_limit	= 3500,
 	.dis_2g_40m_ul_ofdma	= true,
 	.rsvd_ple_ofst		= 0x6f800,
-	.hfc_param_ini		= rtw8852a_hfc_param_ini_pcie,
-	.dle_mem		= rtw8852a_dle_mem_pcie,
+	.hfc_param_ini_pcie	= rtw8852a_hfc_param_ini_pcie,
+	.hfc_param_ini_usb	= rtw8852a_hfc_param_ini_usb,
+	.dle_mem_pcie		= rtw8852a_dle_mem_pcie,
+	.dle_mem_usb		= rtw8852a_dle_mem_usb,
 	.rf_base_addr		= {0xc000, 0xd000},
 	.pwr_on_seq		= pwr_on_seq_8852a,
 	.pwr_off_seq		= pwr_off_seq_8852a,
