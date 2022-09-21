@@ -1,6 +1,7 @@
 #include "usb.h"
 #include "core.h"
 #include "debug.h"
+#include "mac.h"
 #include "reg.h"
 #include <linux/export.h>
 #include <linux/module.h>
@@ -95,13 +96,92 @@ static int rtw89_usb_read_sync(struct rtw89_dev *rtwdev, u32 addr, void *data, u
 	return usb_control_msg_recv(udev, 0, request, requesttype, value, index, data, len, RTW89_USB_CONTROL_MSG_TIMEOUT, GFP_ATOMIC);
 }
 
-u8 rtw89_usb_ops_read8(struct rtw89_dev *rtwdev, u32 addr)
+void rtw89_usb_ops_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
 {
-	u8 data;
+	int ret = rtw89_usb_write_sync(rtwdev, addr, &data, 1);
 
-	int ret = rtw89_usb_read_sync(rtwdev, addr, &data, 1);
+	rtw89_info(rtwdev, "rtw89_usb_ops_write8, addr=%x, data=%x\n", addr, data);
+
+	if (ret) {
+		rtw89_err(rtwdev, "rtw89_usb_ops_write8, addr=%x, ret=%d\n", addr, ret);
+	}
 
 	BUG_ON(ret != 0);
+}
+
+void rtw89_usb_ops_write16(struct rtw89_dev *rtwdev, u32 addr, u16 data)
+{
+	u16 val = cpu_to_le16(data);
+	int ret = rtw89_usb_write_sync(rtwdev, addr, &val, 2);
+
+	rtw89_info(rtwdev, "rtw89_usb_ops_write16, addr=%x, val=%x\n", addr, val);
+
+	if (ret) {
+		rtw89_err(rtwdev, "rtw89_usb_ops_write16, addr=%x, ret=%d\n", addr, ret);
+	}
+
+	BUG_ON(ret != 0);
+}
+
+void rtw89_usb_ops_write32(struct rtw89_dev *rtwdev, u32 addr, u32 data)
+{
+	u32 val = cpu_to_le32(data);
+	int ret = rtw89_usb_write_sync(rtwdev, addr, &val, 4);
+
+	rtw89_info(rtwdev, "rtw89_usb_ops_write32, addr=%x, val=%x\n", addr, val);
+
+	if (ret) {
+		rtw89_err(rtwdev, "rtw89_usb_ops_write32, addr=%x, ret=%d\n", addr, ret);
+	}
+
+	BUG_ON(ret != 0);
+}
+
+static u32 rtw89_usb_ops_read32_cmac(struct rtw89_dev *rtwdev, u32 addr)
+{
+	u32 val;
+	int count;
+
+	int ret = rtw89_usb_read_sync(rtwdev, addr, &val, 4);
+
+	BUG_ON(ret != 0);
+
+	for (count = 0; ; count++) {
+		if (val != RTW89_R32_DEAD)
+			return val;
+		if (count >= MAC_REG_POOL_COUNT) {
+			rtw89_warn(rtwdev, "addr %#x = %#x\n", addr, val);
+			return RTW89_R32_DEAD;
+		}
+		rtw89_usb_ops_write32(rtwdev, R_AX_CK_EN, B_AX_CMAC_ALLCKEN);
+
+		ret = rtw89_usb_read_sync(rtwdev, addr, &val, 4);
+
+		BUG_ON(ret != 0);
+	}
+
+	return val;
+}
+
+static u8 rtw89_usb_ops_read8(struct rtw89_dev *rtwdev, u32 addr)
+{
+	u8 data;
+	int ret;
+	u32 addr32, val32, shift;
+
+	if (!ACCESS_CMAC(addr))
+	{
+		ret = rtw89_usb_read_sync(rtwdev, addr, &data, 1);
+		BUG_ON(ret != 0);
+	}
+	else
+	{
+		addr32 = addr & ~0x3;
+		shift = (addr & 0x3) * 8;
+		val32 = rtw89_usb_ops_read32_cmac(rtwdev, addr32);
+		data = val32 >> shift;
+	}
+
 
 	rtw89_info(rtwdev, "rtw89_usb_ops_read8, addr=%x, data=%x\n", addr, data);
 
@@ -111,10 +191,21 @@ u8 rtw89_usb_ops_read8(struct rtw89_dev *rtwdev, u32 addr)
 u16 rtw89_usb_ops_read16(struct rtw89_dev *rtwdev, u32 addr)
 {
 	u16 data;
+	int ret;
+	u32 addr32, val32, shift;
 
-	int ret = rtw89_usb_read_sync(rtwdev, addr, &data, 2);
-
-	BUG_ON(ret != 0);
+	if (!ACCESS_CMAC(addr))
+	{
+		ret = rtw89_usb_read_sync(rtwdev, addr, &data, 2);
+		BUG_ON(ret != 0);
+	}
+	else
+	{
+		addr32 = addr & ~0x3;
+		shift = (addr & 0x3) * 8;
+		val32 = rtw89_usb_ops_read32_cmac(rtwdev, addr32);
+		data = val32 >> shift;
+	}
 
 	rtw89_info(rtwdev, "rtw89_usb_ops_read16, addr=%x, data=%x\n", addr, data);
 
@@ -124,10 +215,17 @@ u16 rtw89_usb_ops_read16(struct rtw89_dev *rtwdev, u32 addr)
 u32 rtw89_usb_ops_read32(struct rtw89_dev *rtwdev, u32 addr)
 {
 	u32 data;
+	int ret;
 
-	int ret = rtw89_usb_read_sync(rtwdev, addr, &data, 4);
-
-	BUG_ON(ret != 0);
+	if (!ACCESS_CMAC(addr))
+	{
+		ret = rtw89_usb_read_sync(rtwdev, addr, &data, 4);
+		BUG_ON(ret != 0);
+	}
+	else
+	{
+		data = rtw89_usb_ops_read32_cmac(rtwdev, addr);
+	}
 
 	rtw89_info(rtwdev, "rtw89_usb_ops_read32, addr=%x, data=%x\n", addr, data);
 
@@ -188,47 +286,6 @@ int rtw89_usb_ops_mac_pre_init(struct rtw89_dev *rtwdev)
 	rtw89_usb_ctrl_hci_dma_en(rtwdev, 1);
 
 	return 0;
-}
-
-void rtw89_usb_ops_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
-{
-	int ret = rtw89_usb_write_sync(rtwdev, addr, &data, 1);
-
-	rtw89_info(rtwdev, "rtw89_usb_ops_write8, addr=%x, data=%x\n", addr, data);
-
-	if (ret) {
-		rtw89_err(rtwdev, "rtw89_usb_ops_write8, addr=%x, ret=%d\n", addr, ret);
-	}
-
-	BUG_ON(ret != 0);
-}
-
-void rtw89_usb_ops_write16(struct rtw89_dev *rtwdev, u32 addr, u16 data)
-{
-	u16 val = cpu_to_le16(data);
-	int ret = rtw89_usb_write_sync(rtwdev, addr, &val, 2);
-
-	rtw89_info(rtwdev, "rtw89_usb_ops_write16, addr=%x, val=%x\n", addr, val);
-
-	if (ret) {
-		rtw89_err(rtwdev, "rtw89_usb_ops_write16, addr=%x, ret=%d\n", addr, ret);
-	}
-
-	BUG_ON(ret != 0);
-}
-
-void rtw89_usb_ops_write32(struct rtw89_dev *rtwdev, u32 addr, u32 data)
-{
-	u32 val = cpu_to_le32(data);
-	int ret = rtw89_usb_write_sync(rtwdev, addr, &val, 4);
-
-	rtw89_info(rtwdev, "rtw89_usb_ops_write32, addr=%x, val=%x\n", addr, val);
-
-	if (ret) {
-		rtw89_err(rtwdev, "rtw89_usb_ops_write32, addr=%x, ret=%d\n", addr, ret);
-	}
-
-	BUG_ON(ret != 0);
 }
 
 int rtw89_usb_ops_mac_post_init(struct rtw89_dev *rtwdev)
