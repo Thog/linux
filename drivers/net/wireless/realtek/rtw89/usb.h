@@ -13,11 +13,19 @@
 	.idProduct = (prod), \
 	.driver_info = (kernel_ulong_t)&(cfg)
 
-#define R_AX_USB_STATUS	0x11F0
+#define R_AX_USB_STATUS		0x11F0
 #define R_AX_USB_STATUS_V1	0x51F0
-#define B_AX_R_SSIC_EN	BIT(2)
-#define B_AX_R_USB2_SEL	BIT(1)
-#define B_AX_MODE_HS	BIT(0)
+#define B_AX_R_SSIC_EN		BIT(2)
+#define B_AX_R_USB2_SEL		BIT(1)
+#define B_AX_MODE_HS		BIT(0)
+
+#define R_AX_USB_HOST_REQUEST_2	0x1078
+#define B_AX_R_USBIO_MODE	BIT(4)
+
+#define R_AX_USB_WLAN0_1	0x1174
+#define R_AX_USB_WLAN0_1_V1	0x5174
+#define B_AX_USBRX_RST		BIT(9)
+#define B_AX_USBTX_RST		BIT(8)
 
 struct rtw89_usb_info {
 

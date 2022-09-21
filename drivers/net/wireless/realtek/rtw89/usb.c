@@ -1,6 +1,7 @@
 #include "usb.h"
 #include "core.h"
 #include "debug.h"
+#include "reg.h"
 #include <linux/export.h>
 #include <linux/module.h>
 
@@ -133,11 +134,60 @@ u32 rtw89_usb_ops_read32(struct rtw89_dev *rtwdev, u32 addr)
 	return le32_to_cpu(data);
 }
 
+static void rtw89_usb_ctrl_hci_dma_en(struct rtw89_dev *rtwdev, u8 en)
+{
+	const struct rtw89_chip_info *chip = rtwdev->chip;
+	u32 val32 = B_AX_HCI_TXDMA_EN | B_AX_HCI_RXDMA_EN;
+
+	if (en == 1)
+		rtw89_write32_set(rtwdev, chip->hci_func_en_addr, val32);
+	else
+		rtw89_write32_clr(rtwdev, chip->hci_func_en_addr, val32);
+}
+
+static int rtw89_usb_ctrl_flush_en(struct rtw89_dev *rtwdev, u8 en)
+{
+	enum rtw89_core_chip_id chip_id = rtwdev->chip->chip_id;
+	u32 val32 = B_AX_USBRX_RST | B_AX_USBTX_RST;
+	int wlan0_1_reg;
+
+	if (chip_id == RTL8852A || chip_id == RTL8852B)
+		wlan0_1_reg = R_AX_USB_WLAN0_1;
+	else if (chip_id == RTL8852C)
+		wlan0_1_reg = R_AX_USB_WLAN0_1_V1;
+	else
+	{
+		rtw89_err(rtwdev, "rtw89_usb_ctrl_flush_en: Unsupported chip_id %d", chip_id);
+		return -EINVAL;
+	}
+
+	if (en == 1) {
+		rtw89_write32_set(rtwdev, wlan0_1_reg, val32);
+	} else {
+		rtw89_write32_clr(rtwdev, wlan0_1_reg, val32);
+	}
+
+	return 0;
+}
+
 int rtw89_usb_ops_mac_pre_init(struct rtw89_dev *rtwdev)
 {
-	// TODO
-	rtw89_err(rtwdev, "rtw89_usb_ops_mac_pre_init: not implemented\n");
-	return -ENOTSUPP;
+	int ret;
+
+	rtw89_write32_set(rtwdev, R_AX_USB_HOST_REQUEST_2, B_AX_R_USBIO_MODE);
+
+	ret = rtw89_usb_ctrl_flush_en(rtwdev, 0);
+
+	if (ret)
+	{
+		rtw89_err(rtwdev, "rtw89_usb_ops_mac_pre_init: error ret=%d\n", ret);
+		return ret;
+	}
+
+	rtw89_usb_ctrl_hci_dma_en(rtwdev, 0);
+	rtw89_usb_ctrl_hci_dma_en(rtwdev, 1);
+
+	return 0;
 }
 
 void rtw89_usb_ops_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
@@ -155,9 +205,10 @@ void rtw89_usb_ops_write8(struct rtw89_dev *rtwdev, u32 addr, u8 data)
 
 void rtw89_usb_ops_write16(struct rtw89_dev *rtwdev, u32 addr, u16 data)
 {
-	int ret = rtw89_usb_write_sync(rtwdev, addr, &data, 2);
+	u16 val = cpu_to_le16(data);
+	int ret = rtw89_usb_write_sync(rtwdev, addr, &val, 2);
 
-	rtw89_info(rtwdev, "rtw89_usb_ops_write16, addr=%x, data=%x\n", addr, data);
+	rtw89_info(rtwdev, "rtw89_usb_ops_write16, addr=%x, val=%x\n", addr, val);
 
 	if (ret) {
 		rtw89_err(rtwdev, "rtw89_usb_ops_write16, addr=%x, ret=%d\n", addr, ret);
@@ -168,9 +219,10 @@ void rtw89_usb_ops_write16(struct rtw89_dev *rtwdev, u32 addr, u16 data)
 
 void rtw89_usb_ops_write32(struct rtw89_dev *rtwdev, u32 addr, u32 data)
 {
-	int ret = rtw89_usb_write_sync(rtwdev, addr, &data, 4);
+	u32 val = cpu_to_le32(data);
+	int ret = rtw89_usb_write_sync(rtwdev, addr, &val, 4);
 
-	rtw89_info(rtwdev, "rtw89_usb_ops_write32, addr=%x, data=%x\n", addr, data);
+	rtw89_info(rtwdev, "rtw89_usb_ops_write32, addr=%x, val=%x\n", addr, val);
 
 	if (ret) {
 		rtw89_err(rtwdev, "rtw89_usb_ops_write32, addr=%x, ret=%d\n", addr, ret);
@@ -281,7 +333,7 @@ static int rtw89_usb_populate_status(struct rtw89_dev *rtwdev)
 		return -EINVAL;
 	}
 
-	value = rtwdev->hci.ops->read32(rtwdev, status_reg);
+	value = rtw89_read32(rtwdev, status_reg);
 
 	// Yes the register name state USB2, it's actually to signal USB3.
 	if ((value & B_AX_R_USB2_SEL) == B_AX_R_USB2_SEL)

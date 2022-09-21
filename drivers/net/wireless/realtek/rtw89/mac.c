@@ -953,7 +953,6 @@ static int rtw89_mac_pwr_seq(struct rtw89_dev *rtwdev,
 			pwr_intf_msk = PWR_INTF_MSK_PCIE;
 			break;
 		case RTW89_HCI_TYPE_USB:
-			// Mary-nyan(TODO): The other driver have some USB2 and USB3 switch here, check the diff of power sequence.
 			pwr_intf_msk = PWR_INTF_MSK_USB;
 			break;
 		default:
@@ -1256,9 +1255,8 @@ static int rtw89_mac_sys_init(struct rtw89_dev *rtwdev)
 }
 
 const struct rtw89_mac_size_set rtw89_mac_size = {
-	// TODO(Mary-nyan): Confirm what is going on here, the out of tree driver doesn't have matching values here...
 	.hfc_preccfg_pcie = {2, 40, 0, 0, 1, 0, 0, 0},
-	.hfc_preccfg_usb = {2, 40, 0, 0, 1, 0, 0, 0},
+	.hfc_preccfg_usb = {11, 32, 76, 25, 1, 1, 1, 1},
 	/* PCIE 64 */
 	.wde_size0 = {RTW89_WDE_PG_64, 4095, 1,},
 	/* SDIO, PCIE STF, USB */

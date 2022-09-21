@@ -43,29 +43,29 @@ static const struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_pcie[] = {
 	[RTW89_QTA_INVALID] = {NULL},
 };
 
-// FIXME(Mary-nyan): For now we mirror PCIe values, confirm values are correct.
+// FIXME(Mary-nyan): confirm that values are correct.
 static const struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_usb[] = {
-	{128, 1896, grp_0}, /* ACH 0 */
-	{128, 1896, grp_0}, /* ACH 1 */
-	{128, 1896, grp_0}, /* ACH 2 */
-	{128, 1896, grp_0}, /* ACH 3 */
-	{128, 1896, grp_1}, /* ACH 4 */
-	{128, 1896, grp_1}, /* ACH 5 */
-	{128, 1896, grp_1}, /* ACH 6 */
-	{128, 1896, grp_1}, /* ACH 7 */
-	{32, 1896, grp_0}, /* B0MGQ */
-	{128, 1896, grp_0}, /* B0HIQ */
-	{32, 1896, grp_1}, /* B1MGQ */
-	{128, 1896, grp_1}, /* B1HIQ */
-	{40, 0, 0} /* FWCMDQ */
+	{22, 402, grp_0}, /* ACH 0 */
+	{0, 0, grp_0}, /* ACH 1 */
+	{22, 402, grp_0}, /* ACH 2 */
+	{0, 0, grp_0}, /* ACH 3 */
+	{22, 402, grp_0}, /* ACH 4 */
+	{0, 0, grp_0}, /* ACH 5 */
+	{22, 402, grp_0}, /* ACH 6 */
+	{0, 0, grp_0}, /* ACH 7 */
+	{22, 402, grp_0}, /* B0MGQ */
+	{0, 0, grp_0}, /* B0HIQ */
+	{22, 402, grp_0}, /* B1MGQ */
+	{0, 0, grp_0}, /* B1HIQ */
+	{0, 0, 0} /* FWCMDQ */
 };
 
-// FIXME(Mary-nyan): For now we mirror PCIe values, confirm values are correct.
+// FIXME(Mary-nyan): confirm that values are correct.
 static const struct rtw89_hfc_pub_cfg rtw8852a_hfc_pubcfg_usb = {
-	1896, /* Group 0 */
-	1896, /* Group 1 */
-	3792, /* Public Max */
-	0 /* WP threshold */
+	512, /* Group 0 */
+	0, /* Group 1 */
+	512, /* Public Max */
+	104 /* WP threshold */
 };
 
 static const struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_usb[] = {
