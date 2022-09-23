@@ -43,6 +43,22 @@ static const struct rtw89_hfc_param_ini rtw8852a_hfc_param_ini_pcie[] = {
 	[RTW89_QTA_INVALID] = {NULL},
 };
 
+static const enum rtw89_dma_ch_usb_endpoint rtw8852a_dma_ch_usb_mapping[] = {
+	[RTW89_DMA_ACH0] = RTW89_DMA_CH_USB_EP3,
+	[RTW89_DMA_ACH1] = RTW89_DMA_CH_USB_EP_INVALID,
+	[RTW89_DMA_ACH2] = RTW89_DMA_CH_USB_EP5,
+	[RTW89_DMA_ACH3] = RTW89_DMA_CH_USB_EP_INVALID,
+	[RTW89_DMA_ACH4] = RTW89_DMA_CH_USB_EP4,
+	[RTW89_DMA_ACH5] = RTW89_DMA_CH_USB_EP_INVALID,
+	[RTW89_DMA_ACH6] = RTW89_DMA_CH_USB_EP6,
+	[RTW89_DMA_B0MG] = RTW89_DMA_CH_USB_EP0,
+	[RTW89_DMA_B0HI] = RTW89_DMA_CH_USB_EP0,
+	[RTW89_DMA_B1MG] = RTW89_DMA_CH_USB_EP1,
+	[RTW89_DMA_B1HI] = RTW89_DMA_CH_USB_EP1,
+	[RTW89_DMA_H2C] = RTW89_DMA_CH_USB_EP2,
+	[RTW89_DMA_CH_NUM] = RTW89_DMA_CH_USB_EP_INVALID,
+};
+
 // FIXME(Mary-nyan): confirm that values are correct.
 static const struct rtw89_hfc_ch_cfg rtw8852a_hfc_chcfg_usb[] = {
 	{22, 402, grp_0}, /* ACH 0 */
@@ -2211,7 +2227,9 @@ const struct rtw89_chip_info rtw8852a_chip_info = {
 	.page_regs		= &rtw8852a_page_regs,
 	.dcfo_comp		= &rtw8852a_dcfo_comp,
 	.dcfo_comp_sft		= 3,
-	.imr_info		= &rtw8852a_imr_info
+	.imr_info		= &rtw8852a_imr_info,
+	// TODO(Mary-nyan): move me outside of the chip definition but inside the usb_info
+	.dma_ch_usb_mapping = rtw8852a_dma_ch_usb_mapping
 };
 EXPORT_SYMBOL(rtw8852a_chip_info);
 

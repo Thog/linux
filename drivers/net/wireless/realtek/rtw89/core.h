@@ -2220,6 +2220,25 @@ struct rtw89_hfc_param_ini {
 	u8 mode;
 };
 
+enum rtw89_dma_ch_usb_endpoint {
+	RTW89_DMA_CH_USB_EP0 = 0,
+	RTW89_DMA_CH_USB_EP1 = 1,
+	RTW89_DMA_CH_USB_EP2 = 2,
+	RTW89_DMA_CH_USB_EP3 = 3,
+	RTW89_DMA_CH_USB_EP4 = 4,
+	RTW89_DMA_CH_USB_EP5 = 5,
+	RTW89_DMA_CH_USB_EP6 = 6,
+	RTW89_DMA_CH_USB_EP7 = 7,
+	RTW89_DMA_CH_USB_EP8 = 8,
+	RTW89_DMA_CH_USB_EP9 = 9,
+	RTW89_DMA_CH_USB_EP10 = 10,
+	RTW89_DMA_CH_USB_EP11 = 11,
+	RTW89_DMA_CH_USB_EP12 = 12,
+
+	RTW89_DMA_CH_USB_NUM,
+	RTW89_DMA_CH_USB_EP_INVALID = 0xFF
+};
+
 struct rtw89_dle_size {
 	u16 pge_size;
 	u16 lnk_pge_num;
@@ -2449,6 +2468,7 @@ struct rtw89_chip_info {
 	const struct rtw89_reg_def *dcfo_comp;
 	u8 dcfo_comp_sft;
 	const struct rtw89_imr_info *imr_info;
+	const enum rtw89_dma_ch_usb_endpoint *dma_ch_usb_mapping;
 };
 
 union rtw89_bus_info {

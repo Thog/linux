@@ -11,9 +11,114 @@
 #define REALTEK_USB_VENQT_CMD_REQ		0x05
 #define RTW89_USB_CONTROL_MSG_TIMEOUT	500/* ms */
 
+static int rtw89_usb_get_endpoint(struct rtw89_dev *rtwdev, u8 txch)
+{
+	int ret;
+
+	if (rtwdev->chip->dma_ch_usb_mapping == NULL) {
+		rtw89_err(rtwdev, "rtw89_usb_get_endpoint: Unsupported operation\n");
+		return -EINVAL;
+	}
+
+	ret = rtwdev->chip->dma_ch_usb_mapping[txch];
+
+	if (ret == RTW89_DMA_CH_USB_EP_INVALID) {
+		rtw89_err(rtwdev, "rtw89_usb_get_endpoint: no endpoint bound for channel %d\n", txch);
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+static void rtw89_usb_write_port_complete(struct urb *urb)
+{
+	struct sk_buff *skb;
+
+	pr_err("rtw89_usb_write_port_complete: err=%d\n", urb->status);
+
+	skb = (struct sk_buff *)urb->context;
+	dev_kfree_skb_any(skb);
+}
+
+static int rtw89_usb_write_port(struct rtw89_dev *rtwdev, u8 addr, struct sk_buff *skb)
+{
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	struct usb_device *udev = rtwusb->udev;
+	int pipe;
+	struct urb *urb;
+	int ret;
+
+	if (addr >= rtwusb->num_output_endpoint) {
+		rtw89_err(rtwdev, "rtw89_usb_write_port: Invalid OUT endpoint addr=%d\n", addr);
+		return -EINVAL;
+	}
+
+	pipe = usb_sndbulkpipe(udev, rtwusb->output_endpoint[addr]);
+
+	rtw89_err(rtwdev, "rtw89_usb_write_port addr=%d, ep=%d\n", addr, rtwusb->output_endpoint[addr]);
+
+	urb = usb_alloc_urb(0, GFP_ATOMIC);
+
+	if (!urb)
+		return -ENOMEM;
+
+	usb_fill_bulk_urb(urb, udev, pipe, skb->data, (int)skb->len,
+		rtw89_usb_write_port_complete, skb),
+	urb->transfer_flags |= URB_ZERO_PACKET;
+	ret = usb_submit_urb(urb, GFP_ATOMIC);
+
+	usb_free_urb(urb);
+
+	return ret;
+}
+
+static int rtw89_usb_tx_write(struct rtw89_dev *rtwdev, struct rtw89_core_tx_request *tx_req, u8 txch)
+{
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	struct sk_buff *skb = tx_req->skb;
+	int ret = 0;
+	int endpoint;
+
+	/* check the tx type and dma channel for fw cmd queue */
+	if ((txch == RTW89_TXCH_CH12 ||
+	     tx_req->tx_type == RTW89_CORE_TX_TYPE_FWCMD) &&
+	    (txch != RTW89_TXCH_CH12 ||
+	     tx_req->tx_type != RTW89_CORE_TX_TYPE_FWCMD)) {
+		rtw89_err(rtwdev, "only fw cmd uses dma channel 12\n");
+		return -EINVAL;
+	}
+
+	ret = rtw89_usb_get_endpoint(rtwdev, txch);
+
+	if (ret < 0)
+	{
+		return ret;
+	}
+
+	endpoint = ret;
+
+	// TODO(Mary-nyan): Unify this
+	if (txch == RTW89_TXCH_CH12 || tx_req->tx_type == RTW89_CORE_TX_TYPE_FWCMD) {
+		// TODO
+		ret = rtw89_usb_write_port(rtwdev, endpoint, skb);
+	} else {
+		rtw89_err(rtwdev, "rtw89_usb_tx_write: not implemented for normal channels\n");
+		ret = -ENOTSUPP;
+	}
+
+	return ret;
+}
+
 static int rtw89_usb_ops_tx_write(struct rtw89_dev *rtwdev, struct rtw89_core_tx_request *tx_req)
 {
-	BUG();
+	struct rtw89_tx_desc_info *desc_info = &tx_req->desc_info;
+	int ret;
+
+	ret = rtw89_usb_tx_write(rtwdev, tx_req, desc_info->ch_dma);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to TX Queue %d\n", desc_info->ch_dma);
+		return ret;
+	}
 
 	return 0;
 }
@@ -302,10 +407,9 @@ static int rtw89_usb_ops_deinit(struct rtw89_dev *rtwdev)
 
 static u32 rtw89_usb_check_and_reclaim_tx_resource(struct rtw89_dev *rtwdev, u8 txch)
 {
-	// TODO
+	// TODO(Mary-nyan): Unstub
 	rtw89_err(rtwdev, "rtw89_usb_check_and_reclaim_tx_resource: not implemented\n");
-	BUG();
-	return 0;
+	return 1;
 }
 
 static int rtw89_usb_ops_mac_lv1_recovery(struct rtw89_dev *rtwdev, enum rtw89_lv1_rcvy_step step)
@@ -406,17 +510,42 @@ static int rtw89_usb_populate_status(struct rtw89_dev *rtwdev)
 	return 0;
 }
 
-static int rtw89_usb_parse(struct rtw89_dev *rtwdev, struct usb_interface *interface)
+static int rtw89_usb_populate_endpoints(struct rtw89_dev *rtwdev, struct usb_interface *interface)
 {
-	/*struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
-
-	struct usb_interface_descriptor *interface_desc;
-	struct usb_host_interface *host_interface;
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	struct usb_host_interface *interface_desc = interface->cur_altsetting;
 	struct usb_endpoint_descriptor *endpoint;
-	struct device *dev = &rtwusb->udev->dev;
-	int i, j = 0, endpoints;
-	u8 dir, xtype, num;
-	int ret = 0;*/
+	int i;
+	int num;
+
+	rtwusb->num_input_endpoint = 0;
+	rtwusb->num_output_endpoint = 0;
+
+	for (i = 0; i < interface_desc->desc.bNumEndpoints; ++i) {
+		endpoint = &interface_desc->endpoint[i].desc;
+		num = usb_endpoint_num(endpoint);
+
+		if (usb_endpoint_dir_in(endpoint) && (usb_endpoint_xfer_bulk(endpoint) || usb_endpoint_xfer_int(endpoint))) {
+			if (rtwusb->num_input_endpoint >= RTW89_EP_IN_MAX) {
+				rtw89_err(rtwdev, "rtw89_usb_populate_endpoints: Too many IN endpoints!\n");
+				return -EINVAL;
+			}
+
+			rtwusb->input_endpoint[rtwusb->num_input_endpoint] = num;
+			rtwusb->input_endpoint_type[rtwusb->num_input_endpoint] = usb_endpoint_type(endpoint);
+			rtwusb->num_input_endpoint++;
+		}
+
+		if (usb_endpoint_dir_out(endpoint) && (usb_endpoint_xfer_bulk(endpoint))) {
+			if (rtwusb->num_output_endpoint >= RTW89_EP_OUT_MAX) {
+				rtw89_err(rtwdev, "rtw89_usb_populate_endpoints: Too many OUT endpoints!\n");
+				return -EINVAL;
+			}
+
+			rtwusb->output_endpoint[rtwusb->num_output_endpoint] = num;
+			rtwusb->num_output_endpoint++;
+		}
+	}
 
 	// TODO
 
@@ -438,7 +567,7 @@ static int rtw89_usb_interface_init(struct rtw89_dev *rtwdev, struct usb_interfa
 		return ret;
 	}
 
-	ret = rtw89_usb_parse(rtwdev, interface);
+	ret = rtw89_usb_populate_endpoints(rtwdev, interface);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to check USB configuration, ret=%d\n",
 			ret);

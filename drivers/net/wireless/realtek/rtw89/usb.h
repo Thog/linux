@@ -7,12 +7,16 @@
 #include <linux/module.h>
 #include <linux/usb.h>
 
+#include "txrx.h"
+
 #define RTW89_USB_DEVICE(vend, prod, cfg) \
 	.match_flags = USB_DEVICE_ID_MATCH_DEVICE, \
 	.idVendor = (vend), \
 	.idProduct = (prod), \
 	.driver_info = (kernel_ulong_t)&(cfg)
 
+#define RTW89_EP_IN_MAX		2
+#define RTW89_EP_OUT_MAX	8
 #define R_AX_USB_STATUS		0x11F0
 #define R_AX_USB_STATUS_V1	0x51F0
 #define B_AX_R_SSIC_EN		BIT(2)
@@ -28,14 +32,17 @@
 #define B_AX_USBTX_RST		BIT(8)
 
 struct rtw89_usb_info {
-
 };
 
 struct rtw89_usb {
 	struct rtw89_dev *rtwdev;
 	struct usb_device *udev;
-	u32 max_bulk_out_size;
 	enum usb_device_speed transport_speed;
+	int num_input_endpoint;
+	int num_output_endpoint;
+	int input_endpoint[RTW89_EP_IN_MAX];
+	int input_endpoint_type[RTW89_EP_IN_MAX];
+	int output_endpoint[RTW89_EP_OUT_MAX];
 };
 
 int rtw89_usb_probe(struct usb_interface *interface, const struct usb_device_id *id);

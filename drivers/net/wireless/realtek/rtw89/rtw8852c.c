@@ -2940,10 +2940,10 @@ const struct rtw89_chip_info rtw8852c_chip_info = {
 	.dis_2g_40m_ul_ofdma	= false,
 	.rsvd_ple_ofst		= 0x6f800,
 	.hfc_param_ini_pcie	= rtw8852c_hfc_param_ini_pcie,
-        // TODO(Mary-nyan): Support 8852CU
+	// TODO(Mary-nyan): Support 8852CU
 	.hfc_param_ini_usb	= NULL,
 	.dle_mem_pcie		= rtw8852c_dle_mem_pcie,
-        // TODO(Mary-nyan): Support 8852CU
+	// TODO(Mary-nyan): Support 8852CU
 	.dle_mem_usb		= NULL,
 	.rf_base_addr		= {0xe000, 0xf000},
 	.pwr_on_seq		= NULL,
@@ -3012,7 +3012,9 @@ const struct rtw89_chip_info rtw8852c_chip_info = {
 	.page_regs		= &rtw8852c_page_regs,
 	.dcfo_comp		= &rtw8852c_dcfo_comp,
 	.dcfo_comp_sft		= 5,
-	.imr_info		= &rtw8852c_imr_info
+	.imr_info		= &rtw8852c_imr_info,
+	// TODO(Mary-nyan): Support 8852CU
+	.dma_ch_usb_mapping = NULL
 };
 EXPORT_SYMBOL(rtw8852c_chip_info);
 
