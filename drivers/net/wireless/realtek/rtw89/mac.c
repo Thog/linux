@@ -1112,6 +1112,14 @@ static int rtw89_mac_power_switch(struct rtw89_dev *rtwdev, bool on)
 		cfg_func = chip->ops->pwr_off_func;
 	}
 
+	// Mary-nyan(FIXME): This is important when the transport is USB, would it be needed for PCIe/SDIO?
+	if (rtwdev->hci.type == RTW89_HCI_TYPE_USB && rtw89_read32_mask(rtwdev, R_AX_GPIO_MUXCFG, B_AX_BOOT_MODE)) {
+		rtw89_write32_clr(rtwdev, R_AX_SYS_PW_CTRL, B_AX_APFN_ONMAC);
+		rtw89_write32_clr(rtwdev, R_AX_SYS_STATUS1, B_AX_AUTO_WLPON);
+		rtw89_write32_clr(rtwdev, R_AX_GPIO_MUXCFG, B_AX_BOOT_MODE);
+		rtw89_write32_clr(rtwdev, R_AX_RSV_CTRL, B_AX_R_DIS_PRST);
+	}
+
 	// Mary-nyan(FIXME): difference here, missing _patch_aon_int_leave_lps but could be a hack because power saving wasn't handled on the other driver.
 
 	if (test_bit(RTW89_FLAG_FW_RDY, rtwdev->flags))
