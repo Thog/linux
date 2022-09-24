@@ -523,6 +523,14 @@ static void rtw8852ae_efuse_parsing(struct rtw89_efuse *efuse,
 	efuse->xtal_cap = map->xtal_k;
 }
 
+static void rtw8852au_efuse_parsing(struct rtw89_efuse *efuse,
+				    struct rtw8852a_efuse *map)
+{
+	ether_addr_copy(efuse->addr, map->u.mac_addr);
+	efuse->rfe_type = map->rfe_type;
+	efuse->xtal_cap = map->xtal_k;
+}
+
 static void rtw8852a_efuse_parsing_tssi(struct rtw89_dev *rtwdev,
 					struct rtw8852a_efuse *map)
 {
@@ -568,6 +576,9 @@ static int rtw8852a_read_efuse(struct rtw89_dev *rtwdev, u8 *log_map)
 	switch (rtwdev->hci.type) {
 	case RTW89_HCI_TYPE_PCIE:
 		rtw8852ae_efuse_parsing(efuse, map);
+		break;
+	case RTW89_HCI_TYPE_USB:
+		rtw8852au_efuse_parsing(efuse, map);
 		break;
 	default:
 		return -ENOTSUPP;
