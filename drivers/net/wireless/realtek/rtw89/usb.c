@@ -75,7 +75,11 @@ static int rtw89_usb_write_port(struct rtw89_dev *rtwdev, u8 addr, struct sk_buf
 static int rtw89_usb_tx_write(struct rtw89_dev *rtwdev, struct rtw89_core_tx_request *tx_req, u8 txch)
 {
 	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	const struct rtw89_chip_info *chip = rtwdev->chip;
 	struct sk_buff *skb = tx_req->skb;
+	struct rtw89_tx_desc_info *desc_info = &tx_req->desc_info;
+	void *txdesc;
+	int txdesc_size = chip->h2c_desc_size;
 	int ret = 0;
 	int endpoint;
 
@@ -97,9 +101,12 @@ static int rtw89_usb_tx_write(struct rtw89_dev *rtwdev, struct rtw89_core_tx_req
 
 	endpoint = ret;
 
+	txdesc = skb_push(skb, txdesc_size);
+	memset(txdesc, 0, txdesc_size);
+	rtw89_chip_fill_txdesc_fwcmd(rtwdev, desc_info, txdesc);
+
 	// TODO(Mary-nyan): Unify this
 	if (txch == RTW89_TXCH_CH12 || tx_req->tx_type == RTW89_CORE_TX_TYPE_FWCMD) {
-		// TODO
 		ret = rtw89_usb_write_port(rtwdev, endpoint, skb);
 	} else {
 		rtw89_err(rtwdev, "rtw89_usb_tx_write: not implemented for normal channels\n");
