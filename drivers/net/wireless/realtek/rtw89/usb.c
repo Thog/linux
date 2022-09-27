@@ -10,6 +10,8 @@
 #define	REALTEK_USB_VENQT_WRITE			0x40
 #define REALTEK_USB_VENQT_CMD_REQ		0x05
 #define RTW89_USB_CONTROL_MSG_TIMEOUT	500/* ms */
+#define RTW89_USB_PACKET_MIN_LEN		16
+#define RTW89_USB_PACKET_MAX_LEN		512 * 60
 
 static int rtw89_usb_get_endpoint(struct rtw89_dev *rtwdev, u8 txch)
 {
@@ -38,6 +40,33 @@ static void rtw89_usb_write_port_complete(struct urb *urb)
 
 	skb = (struct sk_buff *)urb->context;
 	dev_kfree_skb_any(skb);
+}
+
+static int rtw_usb_read_port(struct rtw89_dev *rtwdev, u8 addr, struct sk_buff *skb)
+{
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	struct usb_device *udev = rtwusb->udev;
+	int input_endpoint;
+	int pipe;
+	struct urb *urb;
+	int ret;
+
+	if (addr >= rtwusb->num_input_endpoint) {
+		rtw89_err(rtwdev, "rtw_usb_read_port: Invalid IN endpoint addr=%d\n", addr);
+		return -EINVAL;
+	}
+
+	input_endpoint = rtwusb->input_endpoint[addr];
+
+	if (input_endpoint == USB_ENDPOINT_XFER_BULK) {
+		pipe = usb_sndbulkpipe(udev, input_endpoint);
+	} else {
+		pipe = usb_sndintpipe(udev, input_endpoint);
+	}
+
+	rtw89_err(rtwdev, "rtw_usb_read_port addr=%d, ep=%d\n", addr, input_endpoint);
+
+	return -ENOTSUPP;
 }
 
 static int rtw89_usb_write_port(struct rtw89_dev *rtwdev, u8 addr, struct sk_buff *skb)
@@ -152,7 +181,7 @@ static int rtw89_usb_ops_start(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_start: not implemented\n");
-	return -ENOTSUPP;
+	return 0;
 }
 
 static void rtw89_usb_ops_stop(struct rtw89_dev *rtwdev)
@@ -401,7 +430,7 @@ static int rtw89_usb_ops_mac_post_init(struct rtw89_dev *rtwdev)
 {
 	// TODO
 	rtw89_err(rtwdev, "rtw89_usb_ops_mac_post_init: not implemented\n");
-	return -ENOTSUPP;
+	return 0;
 }
 
 static int rtw89_usb_ops_deinit(struct rtw89_dev *rtwdev)
@@ -586,6 +615,58 @@ static int rtw89_usb_interface_init(struct rtw89_dev *rtwdev, struct usb_interfa
 	return ret;
 }
 
+static int rtw89_usb_setup_resource(struct rtw89_dev *rtwdev)
+{
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	int i;
+	int allocated;
+
+	memset(rtwusb->input_urb, 0, sizeof(struct urb) * rtwusb->num_input_endpoint);
+
+	for (i = 0; i < rtwusb->num_input_endpoint; i++) {
+		rtwusb->input_urb[i] = usb_alloc_urb(0, GFP_KERNEL);
+
+		if (rtwusb->input_urb[i] == NULL) {
+			goto err;
+		}
+
+		rtwusb->input_skb[i] = dev_alloc_skb(RTW89_USB_PACKET_MAX_LEN);
+
+		if (rtwusb->input_skb[i] == NULL) {
+			goto err;
+		}
+	}
+
+	return 0;
+
+err:
+	allocated = i;
+
+	for (i = 0; i < allocated; i++) {
+		usb_free_urb(rtwusb->input_urb[i]);
+
+		if (rtwusb->input_urb[i] == NULL) {
+			continue;
+		}
+
+		dev_kfree_skb(rtwusb->input_skb[i]);
+	}
+
+	return -ENOMEM;
+}
+
+static int rtw89_usb_release_resource(struct rtw89_dev *rtwdev) {
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	int i;
+
+	for (i = 0; i < rtwusb->num_input_endpoint; i++) {
+		usb_free_urb(rtwusb->input_urb[i]);
+		dev_kfree_skb(rtwusb->input_skb[i]);
+	}
+
+	return 0;
+}
+
 static void rtw89_usb_interface_deinit(struct rtw89_dev *rtwdev, struct usb_interface *interface)
 {
 	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
@@ -640,20 +721,26 @@ int rtw89_usb_probe(struct usb_interface *interface, const struct usb_device_id 
 		goto err_core_deinit;
 	}
 
+	ret = rtw89_usb_setup_resource(rtwdev);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to setup usb resource\n");
+		goto err_core_deinit;
+	}
+
 	// TODO: some USB specific setup here
 
 	ret = rtw89_chip_info_setup(rtwdev);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to setup chip information\n");
 		// TODO: update me when USB specific stuffs is implemented
-		goto err_usb_deinit;
+		goto err_usb_release_resource;
 	}
 
 	ret = rtw89_core_register(rtwdev);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to register core\n");
 		// TODO: update me when USB specific stuffs is implemented
-		goto err_usb_deinit;
+		goto err_usb_release_resource;
 	}
 
 	// TODO: implement napi_poll in hci
@@ -664,7 +751,8 @@ int rtw89_usb_probe(struct usb_interface *interface, const struct usb_device_id 
 //err_unregister:
 	//rtw89_core_napi_deinit(rtwdev);
 	rtw89_core_unregister(rtwdev);
-err_usb_deinit:
+err_usb_release_resource:
+	rtw89_usb_release_resource(rtwdev);
 	rtw89_usb_interface_deinit(rtwdev, interface);
 err_core_deinit:
 	rtw89_core_deinit(rtwdev);

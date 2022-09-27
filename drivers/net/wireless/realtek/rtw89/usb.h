@@ -15,7 +15,7 @@
 	.idProduct = (prod), \
 	.driver_info = (kernel_ulong_t)&(cfg)
 
-#define RTW89_EP_IN_MAX		2
+#define RTW89_EP_IN_MAX		1
 #define RTW89_EP_OUT_MAX	8
 #define R_AX_USB_STATUS		0x11F0
 #define R_AX_USB_STATUS_V1	0x51F0
@@ -43,6 +43,8 @@ struct rtw89_usb {
 	int input_endpoint[RTW89_EP_IN_MAX];
 	int input_endpoint_type[RTW89_EP_IN_MAX];
 	int output_endpoint[RTW89_EP_OUT_MAX];
+	struct urb *input_urb[RTW89_EP_IN_MAX];
+	struct sk_buff *input_skb[RTW89_EP_IN_MAX];
 };
 
 int rtw89_usb_probe(struct usb_interface *interface, const struct usb_device_id *id);
