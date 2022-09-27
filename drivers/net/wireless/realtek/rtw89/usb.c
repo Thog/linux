@@ -32,6 +32,63 @@ static int rtw89_usb_get_endpoint(struct rtw89_dev *rtwdev, u8 txch)
 	return ret;
 }
 
+static void rtw89_usb_read_port_complete(struct urb *urb)
+{
+	int status = urb->status;
+	struct rtw89_usb_rx *rx_ep;
+
+	pr_err("rtw89_usb_read_port_complete: err=%d\n", urb->status);
+
+	rx_ep = (struct rtw89_usb_rx *)urb->context;
+
+	// TODO
+}
+
+static int rtw_usb_read_endpoint(struct rtw89_dev *rtwdev, struct rtw89_usb_rx *rx_ep, gfp_t mem_flags)
+{
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	struct usb_device *udev = rtwusb->udev;
+	int input_endpoint;
+	int pipe;
+	struct urb *urb;
+	struct sk_buff *skb;
+	int ret;
+
+	urb = rx_ep->urb;
+	skb = rx_ep->skb;
+
+	if (rx_ep->endpoint_type == USB_ENDPOINT_XFER_BULK) {
+		pipe = usb_sndbulkpipe(udev, rx_ep->endpoint);
+	} else {
+		pipe = usb_sndintpipe(udev, rx_ep->endpoint);
+	}
+
+	rtw89_err(rtwdev, "rtw_usb_read_endpoint ep=%d\n", input_endpoint);
+
+	usb_fill_bulk_urb(urb, udev, pipe, skb->data, (int)skb->len,
+		rtw89_usb_read_port_complete, rx_ep),
+	ret = usb_submit_urb(urb, mem_flags);
+
+	if (ret) {
+		// TOOD(Mary-nyan): Reschedule via NAPI?
+	}
+
+	return ret;
+}
+
+
+static int rtw_usb_read_port(struct rtw89_dev *rtwdev, u8 addr, gfp_t mem_flags)
+{
+	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+
+	if (addr >= rtwusb->num_input_endpoint) {
+		rtw89_err(rtwdev, "rtw_usb_read_port: Invalid IN endpoint addr=%d\n", addr);
+		return -EINVAL;
+	}
+
+	return rtw_usb_read_endpoint(rtwdev, &rtwusb->input_endpoint[addr], mem_flags);
+}
+
 static void rtw89_usb_write_port_complete(struct urb *urb)
 {
 	struct sk_buff *skb;
@@ -40,33 +97,6 @@ static void rtw89_usb_write_port_complete(struct urb *urb)
 
 	skb = (struct sk_buff *)urb->context;
 	dev_kfree_skb_any(skb);
-}
-
-static int rtw_usb_read_port(struct rtw89_dev *rtwdev, u8 addr, struct sk_buff *skb)
-{
-	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
-	struct usb_device *udev = rtwusb->udev;
-	int input_endpoint;
-	int pipe;
-	struct urb *urb;
-	int ret;
-
-	if (addr >= rtwusb->num_input_endpoint) {
-		rtw89_err(rtwdev, "rtw_usb_read_port: Invalid IN endpoint addr=%d\n", addr);
-		return -EINVAL;
-	}
-
-	input_endpoint = rtwusb->input_endpoint[addr];
-
-	if (input_endpoint == USB_ENDPOINT_XFER_BULK) {
-		pipe = usb_sndbulkpipe(udev, input_endpoint);
-	} else {
-		pipe = usb_sndintpipe(udev, input_endpoint);
-	}
-
-	rtw89_err(rtwdev, "rtw_usb_read_port addr=%d, ep=%d\n", addr, input_endpoint);
-
-	return -ENOTSUPP;
 }
 
 static int rtw89_usb_write_port(struct rtw89_dev *rtwdev, u8 addr, struct sk_buff *skb)
@@ -103,7 +133,6 @@ static int rtw89_usb_write_port(struct rtw89_dev *rtwdev, u8 addr, struct sk_buf
 
 static int rtw89_usb_tx_write(struct rtw89_dev *rtwdev, struct rtw89_core_tx_request *tx_req, u8 txch)
 {
-	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
 	const struct rtw89_chip_info *chip = rtwdev->chip;
 	struct sk_buff *skb = tx_req->skb;
 	struct rtw89_tx_desc_info *desc_info = &tx_req->desc_info;
@@ -551,11 +580,14 @@ static int rtw89_usb_populate_endpoints(struct rtw89_dev *rtwdev, struct usb_int
 	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
 	struct usb_host_interface *interface_desc = interface->cur_altsetting;
 	struct usb_endpoint_descriptor *endpoint;
+	struct rtw89_usb_rx *input_endpoint;
 	int i;
 	int num;
 
 	rtwusb->num_input_endpoint = 0;
 	rtwusb->num_output_endpoint = 0;
+
+	memset(rtwusb->input_endpoint, 0, sizeof(rtwusb->input_endpoint));
 
 	for (i = 0; i < interface_desc->desc.bNumEndpoints; ++i) {
 		endpoint = &interface_desc->endpoint[i].desc;
@@ -567,8 +599,11 @@ static int rtw89_usb_populate_endpoints(struct rtw89_dev *rtwdev, struct usb_int
 				return -EINVAL;
 			}
 
-			rtwusb->input_endpoint[rtwusb->num_input_endpoint] = num;
-			rtwusb->input_endpoint_type[rtwusb->num_input_endpoint] = usb_endpoint_type(endpoint);
+			input_endpoint = &rtwusb->input_endpoint[rtwusb->num_input_endpoint];
+
+
+			input_endpoint->endpoint = num;
+			input_endpoint->endpoint_type = usb_endpoint_type(endpoint);
 			rtwusb->num_input_endpoint++;
 		}
 
@@ -618,21 +653,22 @@ static int rtw89_usb_interface_init(struct rtw89_dev *rtwdev, struct usb_interfa
 static int rtw89_usb_setup_resource(struct rtw89_dev *rtwdev)
 {
 	struct rtw89_usb *rtwusb = (struct rtw89_usb *)rtwdev->priv;
+	struct rtw89_usb_rx *input_endpoint;
 	int i;
 	int allocated;
 
-	memset(rtwusb->input_urb, 0, sizeof(struct urb) * rtwusb->num_input_endpoint);
-
 	for (i = 0; i < rtwusb->num_input_endpoint; i++) {
-		rtwusb->input_urb[i] = usb_alloc_urb(0, GFP_KERNEL);
+		input_endpoint = &rtwusb->input_endpoint[i];
 
-		if (rtwusb->input_urb[i] == NULL) {
+		input_endpoint->urb = usb_alloc_urb(0, GFP_KERNEL);
+
+		if (input_endpoint->urb == NULL) {
 			goto err;
 		}
 
-		rtwusb->input_skb[i] = dev_alloc_skb(RTW89_USB_PACKET_MAX_LEN);
+		input_endpoint->skb = dev_alloc_skb(RTW89_USB_PACKET_MAX_LEN);
 
-		if (rtwusb->input_skb[i] == NULL) {
+		if (input_endpoint->skb == NULL) {
 			goto err;
 		}
 	}
@@ -643,13 +679,14 @@ err:
 	allocated = i;
 
 	for (i = 0; i < allocated; i++) {
-		usb_free_urb(rtwusb->input_urb[i]);
+		input_endpoint = &rtwusb->input_endpoint[i];
+		usb_free_urb(input_endpoint->urb);
 
-		if (rtwusb->input_urb[i] == NULL) {
+		if (input_endpoint->skb == NULL) {
 			continue;
 		}
 
-		dev_kfree_skb(rtwusb->input_skb[i]);
+		dev_kfree_skb(input_endpoint->skb);
 	}
 
 	return -ENOMEM;
@@ -660,8 +697,8 @@ static int rtw89_usb_release_resource(struct rtw89_dev *rtwdev) {
 	int i;
 
 	for (i = 0; i < rtwusb->num_input_endpoint; i++) {
-		usb_free_urb(rtwusb->input_urb[i]);
-		dev_kfree_skb(rtwusb->input_skb[i]);
+		usb_free_urb(rtwusb->input_endpoint[i].urb);
+		dev_kfree_skb(rtwusb->input_endpoint[i].skb);
 	}
 
 	return 0;

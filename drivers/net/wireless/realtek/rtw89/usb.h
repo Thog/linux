@@ -34,17 +34,21 @@
 struct rtw89_usb_info {
 };
 
+struct rtw89_usb_rx {
+	int endpoint;
+	int endpoint_type;
+	struct urb *urb;
+	struct sk_buff *skb;
+};
+
 struct rtw89_usb {
 	struct rtw89_dev *rtwdev;
 	struct usb_device *udev;
 	enum usb_device_speed transport_speed;
 	int num_input_endpoint;
 	int num_output_endpoint;
-	int input_endpoint[RTW89_EP_IN_MAX];
-	int input_endpoint_type[RTW89_EP_IN_MAX];
+	struct rtw89_usb_rx input_endpoint[RTW89_EP_IN_MAX];
 	int output_endpoint[RTW89_EP_OUT_MAX];
-	struct urb *input_urb[RTW89_EP_IN_MAX];
-	struct sk_buff *input_skb[RTW89_EP_IN_MAX];
 };
 
 int rtw89_usb_probe(struct usb_interface *interface, const struct usb_device_id *id);
